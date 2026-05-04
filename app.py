@@ -1,13 +1,21 @@
 from flask import Flask, render_template, request, redirect, session
-import json, os
+import json
+
+import os
+
+# Ensure data directory exists
+os.makedirs("data", exist_ok=True)
 
 app = Flask(__name__)
 app.secret_key = "secret123"  # for session
 
+# Ensure data directory exists
+os.makedirs("data", exist_ok=True)
+
 INCIDENT_FILE = "data/incidents.json"
 USER_FILE = "data/users.json"
 
-# Ensure files exist
+
 for file in [INCIDENT_FILE, USER_FILE]:
     if not os.path.exists(file):
         with open(file, "w") as f:
@@ -25,7 +33,6 @@ def save(file, data):
         json.dump(data, f, indent=4)
 
 # ---------------- AUTH ----------------
-
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -42,8 +49,6 @@ def login():
         return "Invalid credentials"
 
     return render_template("login.html")
-
-
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -62,13 +67,12 @@ def register():
 
     return render_template("register.html")
 
-
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
 
-# ---------------- DASHBOARD ----------------
+# ---------------- DASHBOARD --------
 
 @app.route("/dashboard")
 def dashboard():
@@ -117,25 +121,29 @@ def resolve(id):
 
     return redirect("/dashboard")
 
+
 # ---------------- SYSTEM ----------------
 
 @app.route("/health")
 def health():
-    return "OK"
+    return render_template("health.html")
 
 @app.route("/crash")
 def crash():
-    os._exit(1)
+    import threading
+    import time
+    import os
 
-app.run(host="0.0.0.0", port=5000)
+    def delayed_crash():
+        time.sleep(1)  
+        os._exit(1)    
+
+    threading.Thread(target=delayed_crash).start()
+    return "<h2>⚠️ Crashing container... Auto-heal should restart it!</h2>"
 
 
-import os
 
-@app.route("/crash")
-def crash():
-    os._exit(1)
-    
-
+# ONLY for local run (NOT Docker
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000, use_reloader=False)
+
